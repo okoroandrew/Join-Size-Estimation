@@ -143,25 +143,31 @@ public class JoinSize {
         int sizeTable1 = rTable1.getInt(1);
         int sizeTable2 = rTable2.getInt(1);
 
+        // when R n S is empty, the size of the relation becomes the product of the two, just like cartesian product
         if (commonCol.isEmpty()) {
             return sizeTable1 * sizeTable2;
         }
+        // when R n S = A, and A is a foreign key in table2 referencing table1, then the size is exactly the size of table2
         else if (fk1) {
             return sizeTable2;
         }
+        // when R n S = A, and A is a foreign key in table1 referencing table2, then the size is exactly the size of table1
         else if (fk2) {
             return sizeTable1;
         }
+        // when R n S = A and A is a key in table1. The size of the join will be less than or equal to the size of table2
         else if (isKey1) {
             return sizeTable2;
         }
+        // when R n S = A and A is a key in table2. The size of the join will be less than or equal to the size of table1
         else if (isKey2) {
             return sizeTable1;
         }
+        // when R n S = A and A is not a key in R or S, the size of join = size(R)*size(S)/max(n(A,R), n(A,S))
         else {
             int noDistinctA = numberOfDistinctA(conn, table1, commonCol);
             int noDistinctB = numberOfDistinctA(conn, table2, commonCol);
-            int n = Math.max(noDistinctA, noDistinctB);
+            int n = Math.max(noDistinctA, noDistinctB);   //n is the max of the two numbers, leads to the min join size
             return (sizeTable2 * sizeTable1)/n;
         }
     }
@@ -217,6 +223,7 @@ public class JoinSize {
     }
 
     public static void main(String[] args) throws SQLException {
+        // jdbc connection to postgres server, using the url, username, and password
         String url = "jdbc:postgresql://localhost/uni_bo96";
         Properties props = new Properties();
         props.setProperty("user", "postgres");
@@ -224,15 +231,18 @@ public class JoinSize {
         Connection conn = DriverManager.getConnection(url, props);
         System.out.println("Successful connection to postgres");
 
-//        String table1 = "takes";
-//        String table2 = "advisor";
+        // Relations to join: input from the terminal
         String table1 = args[0];
         String table2 = args[1];
 
+        // get the common attributes between the two tables. i.e R n S
         Set<String> commonColumns = getCommonAttributes(conn, table1, table2);
+
+        // check if the common attribute(s) is a key in any of the relations
         boolean isKey1 = isKey(conn, table1, commonColumns);
         boolean isKey2 = isKey(conn, table2, commonColumns);
 
+        // check whether the common attribute is a foreign key in one of the input relations referencing the other input relation
         boolean fk1 = isForeignKey(conn, table1, table2, commonColumns);
         boolean fk2 = isForeignKey(conn, table2, table1, commonColumns);
 
@@ -253,6 +263,7 @@ public class JoinSize {
         int estimationError = estimationError(estimatedJoinSize, actualJoinSize);
         System.out.printf("3. The estimation error = %d\n", estimationError);
 
+        // close the connection
         conn.close();
     }
 }
