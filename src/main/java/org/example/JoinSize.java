@@ -4,10 +4,30 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 
-public class Main {
+public class JoinSize {
+    /**
+     * A class: Estimates the size of a natural join operation, compares it with the actual size and gives the
+     *          estimation error
+     * @param conn: jdbc connection to postgres database
+     * @param table1: first relation, input from the terminal
+     * @param table2: second relation, input from the terminal
+     * @return 1. Estimated join size 2. Actual join size  3. Estimation error
+     * @throws SQLException:
+     *
+     * @author: Andrew Okoro
+     * @date: 05/04/2023
+     * @title: Database programming homework
+     */
 
     public static Set<String> getCommonAttributes(Connection conn, String table1, String table2) throws SQLException {
-        //takes two tables and return their common attribute
+        /**
+         * Given two relations: R and S, this method returns the attributes that both R and S have in common
+         *
+         * @param conn: jdbc connection to the database
+         * @param table1: a relation
+         * @param table2: a relation
+         * @return the common columns in the two relations
+         */
         DatabaseMetaData metaData = conn.getMetaData();
         ResultSet columnsTable1 = metaData.getColumns(null, null, table1, null);
         ResultSet columnsTable2 = metaData.getColumns(null, null, table2, null);
@@ -34,6 +54,16 @@ public class Main {
     }
 
     public static boolean isKey(Connection conn, String table, Set<String> commonCol) throws SQLException {
+        /**
+         * Checks if the common attributes is a key in the given relation
+         *
+         * @param conn: jdbc connection to the database
+         * @param table: a relation
+         * @param commonCol: attributes
+         *
+         * @return true if the commonCol is a key for the table
+         */
+
         boolean isKey = false;
         Set<String> pKeys = new HashSet<String>();
         DatabaseMetaData metaData = conn.getMetaData();
@@ -50,6 +80,17 @@ public class Main {
     }
 
     public static boolean isForeignKey(Connection conn, String table1, String table2, Set<String> commonCol) throws SQLException {
+        /**
+         * Checks if the common attributes is a foreign key in the given relation
+         *
+         * @param conn: jdbc connection to the database
+         * @param table1: a referenced relation
+         * @param table2: a referencing relation
+         * @param commonCol: common attributes of table1 and table2
+         *
+         * @return true if the commonCol is a foreign key for the table
+         */
+
         //check if the common attribute is a foreign key, what's the referencing relation?
         boolean isFK = false;
         DatabaseMetaData metaData = conn.getMetaData();
@@ -73,9 +114,23 @@ public class Main {
 
     public static int estimatedJoinSize(Connection conn, String table1, String table2, Set<String> commonCol,
                                         boolean fk1, boolean fk2, boolean isKey1, boolean isKey2) throws SQLException {
+        /**
+         * Returns the estimated size of a join
+         *
+         * @param conn: jdbc connection to the database
+         * @param table1: a referenced relation
+         * @param table2: a referencing relation
+         * @param commonCol: common attributes of table1 and table2
+         * @param fk1: true if the common attribute is a foreign key in table2, otherwise false
+         * @param fk2: true if the common attribute is a foreign key in table1, otherwise false
+         * @param isKey1: true or false based on the common attribute
+         * @param isKey2: true or false based on the common attribute
+         *
+         * @return the estimated join size
+         */
 
-        String queryTable1 = "SELECT COUNT(*) FROM " + table1;
-        String queryTable2 = "SELECT COUNT(*) FROM " + table2;
+        String queryTable1 = String.format("SELECT COUNT(*) FROM %s", table1);
+        String queryTable2 = String.format("SELECT COUNT(*) FROM %s", table2);
 
         Statement statement1 = conn.createStatement();
         Statement statement2 = conn.createStatement();
@@ -112,9 +167,19 @@ public class Main {
     }
 
     public static int numberOfDistinctA(Connection conn, String table, Set<String> commonCol) throws SQLException {
+        /**
+         * Returns the number of distinct A in the relation r. i.e n(A, r) = projection of A on r
+         *
+         * @param conn: jdbc connection to the database
+         * @param table: a relation
+         * @param commonCol: attributes
+         *
+         * @return the number of distinct A(commonCol) in r(table)
+         */
+
         String commonAttributes = String.join(", ", commonCol);
         String sql = String.format("SELECT COUNT(*)\n" +
-                                    "FROM (SELECT %s \n" +
+                                    "FROM (SELECT DISTINCT (%s) \n" +
                                     "\t  FROM %s) AS t", commonAttributes, table);
         Statement statement = conn.createStatement();
         ResultSet n = statement.executeQuery(sql);
@@ -124,7 +189,16 @@ public class Main {
 
 
     public static int actualJoinSize(Connection conn, String table1, String table2) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM " + table1 + " NATURAL JOIN " + table2;
+        /**
+         * Returns the actual size of the natural join of table1 and table2
+         *
+         * @param conn: jdbc connection to the database
+         * @param table1: a relation
+         * @param table2: a relation
+         *
+         * @return the actual size of the natural join of the two relations
+         */
+        String sql = String.format("SELECT COUNT(*) FROM %s NATURAL JOIN %s", table1, table2);
         Statement statement = conn.createStatement();
         ResultSet joinSize = statement.executeQuery(sql);
         joinSize.next();
@@ -132,6 +206,13 @@ public class Main {
     }
 
     public static int estimationError(int estimated, int actual){
+        /**
+         * Returns the estimation error
+         * @param estimated: the estimated size of the join
+         * @param actual: the actual size of the join
+         *
+         * @return the difference between the estimated and the actual
+         */
         return estimated - actual;
     }
 
@@ -143,10 +224,10 @@ public class Main {
         Connection conn = DriverManager.getConnection(url, props);
         System.out.println("Successful connection to postgres");
 
-        String table1 = "takes";
-        String table2 = "advisor";
-//        String table1 = args[0];
-//        String table2 = args[1];
+//        String table1 = "takes";
+//        String table2 = "advisor";
+        String table1 = args[0];
+        String table2 = args[1];
 
         Set<String> commonColumns = getCommonAttributes(conn, table1, table2);
         boolean isKey1 = isKey(conn, table1, commonColumns);
